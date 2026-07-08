@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="theme-color" content="#009688">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<link rel="manifest" href="manifest.json">
+<link rel="stylesheet" href="styles.css">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; img-src 'self' data:; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline';">
+<title>轻练 · 记录</title>
+
+</head>
+<body>
+
+<div class="header">
+<h1>📊 训练记录</h1>
+</div>
+
+<div class="empty" id="emptyState">
+<div class="icon">📝</div>
+<div class="msg">还没有训练记录</div>
+<a class="empty__link" href="workout.html">开始第一次训练 →</a>
+</div>
+
+<div class="history-list" id="historyList"></div>
+<button class="clear-all" id="clearBtn" onclick="clearAll()" style="display:none">清空所有记录</button>
+
+<nav class="bottom-nav" aria-label="主导航">
+  <a class="nav-item" href="browser.html"><span class="icon">📖</span><span class="label">百科</span></a>
+  <a class="nav-item" href="workout.html"><span class="icon">💪</span><span class="label">训练</span></a>
+  <a class="nav-item active" href="history.html" aria-current="page"><span class="icon">📊</span><span class="label">记录</span></a>
+</nav>
+
+<script>
+function escapeHtml(s) {
+    return (s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+var workoutHistory = JSON.parse(localStorage.getItem('workoutHistory') || '[]');
+
+function renderHistory() {
+    var listEl = document.getElementById('historyList');
+    var emptyEl = document.getElementById('emptyState');
+    var clearBtn = document.getElementById('clearBtn');
+
+    if (workoutHistory.length === 0) {
+        emptyEl.style.display = 'block';
+        listEl.innerHTML = '';
+        clearBtn.style.display = 'none';
+        return;
+    }
+
+    emptyEl.style.display = 'none';
+    clearBtn.style.display = 'block';
+
+    workoutHistory.sort(function(a, b) { return new Date(b.date) - new Date(a.date); });
+
+    var html = '';
+    for (var i = 0; i < workoutHistory.length; i++) {
+        var item = workoutHistory[i];
+        var date = new Date(item.date);
+        var dateStr = date.getFullYear() + '/' + (date.getMonth() + 1) + '/' + date.getDate();
+        var timeStr = date.getHours() + ':' + (date.getMinutes() < 10 ? '0' : '') + date.getMinutes();
+
+        html += '<div class="history-item">';
+        html += '<div class="date">' + dateStr + ' ' + timeStr + '</div>';
+        html += '<div class="stats">';
+        html += '<div class="stat"><div class="num">' + item.exercises.length + '</div><div class="label">动作数</div></div>';
+        html += '<div class="stat"><div class="num">' + item.completed_sets + '/' + item.total_sets + '</div><div class="label">完成组数</div></div>';
+        html += '</div>';
+        html += '<div class="exercises">';
+        for (var j = 0; j < item.exercises.length; j++) {
+            var ex = item.exercises[j];
+            var unit = ex.unit || '次';
+            html += escapeHtml(ex.name) + '：' + ex.sets_done + '/' + ex.sets_target + '组 (' + ex.reps + unit + '/组)';
+            if (j < item.exercises.length - 1) html += '；';
+        }
+        html += '</div>';
+        html += '<div class="del-btn" onclick="deleteItem(' + i + ')">删除此记录</div>';
+        html += '</div>';
+    }
+    listEl.innerHTML = html;
+}
+
+function deleteItem(idx) {
+    if (confirm('删除这条训练记录？')) {
+        workoutHistory.splice(idx, 1);
+        localStorage.setItem('workoutHistory', JSON.stringify(workoutHistory));
+        renderHistory();
+    }
+}
+
+function clearAll() {
+    if (confirm('清空所有训练记录？此操作不可恢复！')) {
+        workoutHistory = [];
+        localStorage.setItem('workoutHistory', JSON.stringify(workoutHistory));
+        renderHistory();
+    }
+}
+
+if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.register('sw.js');
+}
+
+renderHistory();
+</script>
+</body>
+</html>

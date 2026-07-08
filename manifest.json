@@ -1,0 +1,22 @@
+{
+  "name": "轻练",
+  "short_name": "轻练",
+  "description": "按部位推荐训练计划，1,324个动作离线指导",
+  "start_url": "browser.html",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#e0f2f1",
+  "theme_color": "#009688",
+  "icons": [
+    {
+      "src": "icons/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "icons/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}

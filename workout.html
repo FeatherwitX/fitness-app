@@ -1,0 +1,495 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="theme-color" content="#009688">
+<link rel="manifest" href="manifest.json">
+<title>轻练 · 训练</title>
+<link rel="stylesheet" href="styles.css">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; img-src 'self' data: https://static.exercisedb.dev; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; manifest-src 'self';">
+</head>
+<body>
+
+<div class="header" id="headerBar">
+<h1 id="headerTitle">🏃 轻练</h1>
+<span class="btn" id="headerBtn" onclick="clearPlan()" style="display:none">清空</span>
+</div>
+
+<!-- Mode tabs -->
+<div class="mode-tabs">
+    <div class="mode-tab active" onclick="setMode('goal')">🎯 目标套餐</div>
+    <div class="mode-tab" onclick="setMode('bodypart')">📍 按部位选</div>
+</div>
+
+<!-- Gender bar -->
+<div class="gender-bar" id="genderBar">
+    <label>推荐模式：</label>
+    <div class="gender-chip active" onclick="setGender('general')">通用</div>
+    <div class="gender-chip" onclick="setGender('female')">女生</div>
+    <div class="gender-chip" onclick="setGender('male')">男生</div>
+</div>
+
+<!-- Goal mode -->
+<div class="section" id="goalSection">
+    <div class="section-title">🎯 选择今天的训练目标</div>
+    <div class="goal-grid" id="goalGrid"></div>
+    <div class="hint-box" id="hintBox">
+        <div class="title">💡 推荐套餐</div>
+        <div id="hintContent"></div>
+    </div>
+    <div class="rec-list" id="goalRecList">
+        <div class="section-title">🔥 套餐动作</div>
+        <div id="goalRecItems"></div>
+        <div style="text-align:center;margin-top:10px;font-size:0.8em;color:#999">点击 <span style="color:#ff6e40;font-weight:700">+</span> 添加到今日训练</div>
+    </div>
+</div>
+
+<!-- Body part mode -->
+<div class="section" id="bpSection" style="display:none">
+    <div class="section-title">📍 选择今天要练的部位</div>
+    <div class="bp-hint" style="font-size:0.8em;color:#777;margin-bottom:10px">点击下方部位查看推荐动作</div>
+    <div class="bp-grid" id="bpGrid"></div>
+    <div class="rec-list" id="recList">
+        <div class="section-title">🔥 推荐动作</div>
+        <div id="recItems"></div>
+        <div style="text-align:center;margin-top:10px;font-size:0.8em;color:#999">点击 <span style="color:#ff6e40;font-weight:700">+</span> 添加到今日训练</div>
+    </div>
+</div>
+
+<!-- Plan view -->
+<div class="plan-view" id="planView" style="display:none">
+    <div class="section-title">📋 今日训练计划</div>
+    <div class="hint-box" id="planHint">
+        <div class="title">✏️ 组数/次数说明</div>
+        <p>💪 <strong>增肌</strong>：3-4组 × 8-12次，组间休息60-90秒</p>
+        <p>🏋️ <strong>力量</strong>：4-5组 × 3-6次，组间休息90-120秒</p>
+        <p>🏃 <strong>耐力</strong>：2-3组 × 15-20次，组间休息30-45秒</p>
+        <p>👇 直接点击数字框修改组数和次数</p>
+    </div>
+    <div id="planList"></div>
+    <div class="start-btn disabled" id="startBtn" onclick="startWorkout()">开始训练</div>
+</div>
+
+<!-- Workout mode -->
+<div class="workout-view" id="workoutView">
+    <div class="timer-bar">
+        <div class="phase" id="timerPhase">准备开始</div>
+        <div class="time" id="timerTime">00:00</div>
+        <div class="progress"><div class="bar" id="timerProgress" style="width:0%"></div></div>
+    </div>
+    <div class="current-ex">
+        <div class="gif-area" id="currentGif"></div>
+        <h2 id="currentName">--</h2>
+        <div class="set-info" id="currentSetInfo">--</div>
+    </div>
+    <div class="set-buttons">
+        <button class="set-btn btn-complete" onclick="completeSet()">完成</button>
+        <button class="set-btn btn-skip" onclick="skipSet()">跳过</button>
+    </div>
+    <div class="steps-view" id="stepsArea"></div>
+</div>
+
+<!-- Rest overlay -->
+<div class="rest-overlay" id="restOverlay">
+    <div class="phase">⏸ 休息</div>
+    <div class="time" id="restTime">60</div>
+    <div class="hint">调整呼吸，准备下一组</div>
+    <div class="skip-btn" onclick="skipRest()">跳过休息 →</div>
+</div>
+
+<!-- Complete -->
+<div class="complete-view" id="completeView">
+    <div class="icon">🎉</div>
+    <h2>训练完成！</h2>
+    <div class="summary" id="completeSummary"></div>
+    <div class="btn btn-primary" onclick="saveHistory()">保存记录</div>
+    <div class="btn btn-secondary" onclick="location.href='browser.html'">继续浏览</div>
+</div>
+
+<div class="bottom-nav">
+<div class="nav-item" onclick="location.href='browser.html'"><div class="icon">📖</div><div class="label">百科</div></div>
+<div class="nav-item active" onclick="location.href='workout.html'"><div class="icon">💪</div><div class="label">训练</div></div>
+<div class="nav-item" onclick="location.href='history.html'"><div class="icon">📊</div><div class="label">记录</div></div>
+</div>
+
+<script>
+const restDuration = 60;
+const restBetweenExercises = 75;
+let allExercises = [];
+
+const goalTemplates = {"female_peach": {"title": "蜜桃臀套餐", "icon": "🍑", "desc": "臀桥+深蹲+弓步，提升臀线，改善扁平臀", "exercises": [["low glute bridge on floor", 3, 15, false, "用臀部发力顶髋，顶峰收缩"], ["jump squat", 3, 12, false, "下蹲至大腿平行地面，跳起"], ["forward lunge (male)", 3, 12, false, "步幅大一点，感受臀部拉伸"], ["single leg bridge with outstretched leg", 3, 12, false, "单腿臀桥，另一腿伸直"], ["curtsey squat", 3, 12, false, "交叉后蹲，深度刺激臀肌"]], "items": [{"name": "low glute bridge on floor", "name_cn": "低 臀 桥 地板", "target": "glutes", "media_id": "u0cNiij", "sets": 3, "reps": 15, "time_mode": false, "note": "用臀部发力顶髋，顶峰收缩"}, {"name": "jump squat", "name_cn": "跳蹲", "target": "glutes", "media_id": "LIlE5Tn", "sets": 3, "reps": 12, "time_mode": false, "note": "下蹲至大腿平行地面，跳起"}, {"name": "forward lunge (male)", "name_cn": "前弓步（男）", "target": "glutes", "media_id": "kMzUs9Y", "sets": 3, "reps": 12, "time_mode": false, "note": "步幅大一点，感受臀部拉伸"}, {"name": "single leg bridge with outstretched leg", "name_cn": "单腿臀桥（伸直腿）", "target": "glutes", "media_id": "rmEukuS", "sets": 3, "reps": 12, "time_mode": false, "note": "单腿臀桥，另一腿伸直"}, {"name": "curtsey squat", "name_cn": "屈膝礼深蹲", "target": "glutes", "media_id": "gUjqdei", "sets": 3, "reps": 12, "time_mode": false, "note": "交叉后蹲，深度刺激臀肌"}]}, "female_abs": {"title": "马甲线套餐", "icon": "🔥", "desc": "卷腹+举腿+平板，强化核心，收紧腰腹", "exercises": [["crunch floor", 3, 20, false, "肩胛骨离地即可"], ["front plank with twist", 3, 30, true, "保持身体一条直线"], ["lying leg raise flat bench", 3, 15, false, "下腹发力，避免腰部代偿"], ["russian twist", 3, 20, false, "双脚可抬起增加难度"], ["air bike", 3, 20, false, "左右交替，肘碰膝"]], "items": [{"name": "crunch floor", "name_cn": "卷腹 地板", "target": "abs", "media_id": "TFqbd8t", "sets": 3, "reps": 20, "time_mode": false, "note": "肩胛骨离地即可"}, {"name": "front plank with twist", "name_cn": "前 平板 带 转体", "target": "abs", "media_id": "CosupLu", "sets": 3, "reps": 30, "time_mode": true, "note": "保持身体一条直线"}, {"name": "lying leg raise flat bench", "name_cn": "仰卧腿 举 平板卧推", "target": "abs", "media_id": "WhuFnR7", "sets": 3, "reps": 15, "time_mode": false, "note": "下腹发力，避免腰部代偿"}, {"name": "russian twist", "name_cn": "俄式转体", "target": "abs", "media_id": "XVDdcoj", "sets": 3, "reps": 20, "time_mode": false, "note": "双脚可抬起增加难度"}, {"name": "air bike", "name_cn": "空中自行车", "target": "abs", "media_id": "1ZFqTDN", "sets": 3, "reps": 20, "time_mode": false, "note": "左右交替，肘碰膝"}]}, "female_back": {"title": "美背套餐", "icon": "🦋", "desc": "划船+下拉+挺身，改善圆肩驼背", "exercises": [["bodyweight squatting row", 3, 12, false, "利用门框或栏杆做自重划船"], ["chin-up", 3, 8, false, "反握引体，背阔肌发力"], ["inverted row", 3, 12, false, "低杠仰卧划船，背部发力"], ["reverse plank with leg lift", 3, 10, false, "反向平板抬腿，打开肩胸"], ["hyperextension", 3, 12, false, "收紧下背部，缓慢起身"]], "items": [{"name": "bodyweight squatting row", "name_cn": "自重 深蹲t内g 划船", "target": "upper back", "media_id": "3xK09Sk", "sets": 3, "reps": 12, "time_mode": false, "note": "利用门框或栏杆做自重划船"}, {"name": "chin-up", "name_cn": "反握引体向上", "target": "lats", "media_id": "T2mxWqc", "sets": 3, "reps": 8, "time_mode": false, "note": "反握引体，背阔肌发力"}, {"name": "inverted row", "name_cn": "反向划船", "target": "upper back", "media_id": "bZGHsAZ", "sets": 3, "reps": 12, "time_mode": false, "note": "低杠仰卧划船，背部发力"}, {"name": "reverse plank with leg lift", "name_cn": "反向 平板 带 腿 举", "target": "abs", "media_id": "tFToB7l", "sets": 3, "reps": 10, "time_mode": false, "note": "反向平板抬腿，打开肩胸"}, {"name": "hyperextension", "name_cn": "背部挺身", "target": "spine", "media_id": "zhMwOwE", "sets": 3, "reps": 12, "time_mode": false, "note": "收紧下背部，缓慢起身"}]}, "female_full": {"title": "全身燃脂套餐", "icon": "💦", "desc": "波比跳+半蹲跳+登山跑，提升心率燃脂", "exercises": [["burpee", 3, 10, false, "落地缓冲，保护膝盖"], ["semi squat jump (male)", 3, 20, true, "半蹲跳起，保持节奏"], ["mountain climber", 3, 30, true, "核心收紧，交替快跑"], ["jack burpee", 3, 10, false, "波比+开合跳，强度更高"], ["lunge with jump", 3, 12, false, "弓步跳换腿，全身参与"]], "items": [{"name": "burpee", "name_cn": "波比跳", "target": "cardiovascular system", "media_id": "dK9394r", "sets": 3, "reps": 10, "time_mode": false, "note": "落地缓冲，保护膝盖"}, {"name": "semi squat jump (male)", "name_cn": "半蹲跳（男）", "target": "cardiovascular system", "media_id": "6FMU51h", "sets": 3, "reps": 20, "time_mode": true, "note": "半蹲跳起，保持节奏"}, {"name": "mountain climber", "name_cn": "登山者", "target": "cardiovascular system", "media_id": "RJgzwny", "sets": 3, "reps": 30, "time_mode": true, "note": "核心收紧，交替快跑"}, {"name": "jack burpee", "name_cn": "开合波比跳", "target": "cardiovascular system", "media_id": "mr7pkqP", "sets": 3, "reps": 10, "time_mode": false, "note": "波比+开合跳，强度更高"}, {"name": "lunge with jump", "name_cn": "弓步 带 跳", "target": "glutes", "media_id": "PM1PZjg", "sets": 3, "reps": 12, "time_mode": false, "note": "弓步跳换腿，全身参与"}]}, "male_chest": {"title": "胸肌强化套餐", "icon": "💪", "desc": "俯卧撑变式+臂屈伸，增厚胸大肌", "exercises": [["push-up", 4, 15, false, "核心收紧，全幅度下降"], ["decline push-up", 3, 12, false, "脚抬高刺激上胸"], ["chest dip", 3, 10, false, "身体前倾，胸肌发力"], ["archer push up", 3, 8, false, "单侧强化，左右交替"], ["diamond push-up", 3, 12, false, "窄距俯卧撑，内侧胸肌"]], "items": [{"name": "push-up", "name_cn": "俯卧撑", "target": "pectorals", "media_id": "I4hDWkc", "sets": 4, "reps": 15, "time_mode": false, "note": "核心收紧，全幅度下降"}, {"name": "decline push-up", "name_cn": "下斜 俯卧撑", "target": "pectorals", "media_id": "i5cEhka", "sets": 3, "reps": 12, "time_mode": false, "note": "脚抬高刺激上胸"}, {"name": "chest dip", "name_cn": "胸肌臂屈伸", "target": "pectorals", "media_id": "9WTm7dq", "sets": 3, "reps": 10, "time_mode": false, "note": "身体前倾，胸肌发力"}, {"name": "archer push up", "name_cn": "弓手俯卧撑", "target": "pectorals", "media_id": "A9qxk2F", "sets": 3, "reps": 8, "time_mode": false, "note": "单侧强化，左右交替"}, {"name": "diamond push-up", "name_cn": "钻石俯卧撑", "target": "triceps", "media_id": "soIB2rj", "sets": 3, "reps": 12, "time_mode": false, "note": "窄距俯卧撑，内侧胸肌"}]}, "male_back": {"title": "背部力量套餐", "icon": "🔙", "desc": "引体+自重划船+挺身，打造倒三角", "exercises": [["pull-up", 4, 6, false, "全程控制，下巴过杠"], ["inverted row", 4, 10, false, "低杠仰卧划船，背阔肌发力"], ["bodyweight squatting row (with towel)", 3, 12, false, "毛巾辅助自重划船"], ["chin-up", 3, 8, false, "反握引体，全面刺激背部"], ["hyperextension", 3, 12, false, "下背挺身，增强脊柱稳定"]], "items": [{"name": "pull-up", "name_cn": "引体向上", "target": "lats", "media_id": "lBDjFxJ", "sets": 4, "reps": 6, "time_mode": false, "note": "全程控制，下巴过杠"}, {"name": "inverted row", "name_cn": "反向划船", "target": "upper back", "media_id": "bZGHsAZ", "sets": 4, "reps": 10, "time_mode": false, "note": "低杠仰卧划船，背阔肌发力"}, {"name": "bodyweight squatting row (with towel)", "name_cn": "自重 深蹲t内g 划船 (带毛巾)", "target": "upper back", "media_id": "BReCuOn", "sets": 3, "reps": 12, "time_mode": false, "note": "毛巾辅助自重划船"}, {"name": "chin-up", "name_cn": "反握引体向上", "target": "lats", "media_id": "T2mxWqc", "sets": 3, "reps": 8, "time_mode": false, "note": "反握引体，全面刺激背部"}, {"name": "hyperextension", "name_cn": "背部挺身", "target": "spine", "media_id": "zhMwOwE", "sets": 3, "reps": 12, "time_mode": false, "note": "下背挺身，增强脊柱稳定"}]}, "male_shoulders": {"title": "肩部增宽套餐", "icon": "🤷", "desc": "倒立推+俯卧撑变式，打造宽肩", "exercises": [["pike-to-cobra push-up", 4, 8, false, "倒V俯卧撑，肩推替代"], ["push-up to side plank", 3, 10, false, "俯卧撑接侧平板，肩稳定"], ["handstand push-up", 3, 5, false, "靠墙倒立推，前束强化"], ["scapula push-up", 3, 15, false, "肩胛俯卧撑，肩袖稳定"], ["reverse plank with leg lift", 3, 10, false, "反向平板，后束激活"]], "items": [{"name": "pike-to-cobra push-up", "name_cn": "折叠-到-眼镜蛇 俯卧撑", "target": "glutes", "media_id": "XPUDTt7", "sets": 4, "reps": 8, "time_mode": false, "note": "倒V俯卧撑，肩推替代"}, {"name": "push-up to side plank", "name_cn": "俯卧撑 到 侧 平板", "target": "abs", "media_id": "KhHJ338", "sets": 3, "reps": 10, "time_mode": false, "note": "俯卧撑接侧平板，肩稳定"}, {"name": "handstand push-up", "name_cn": "手倒立 俯卧撑", "target": "triceps", "media_id": "rQxwMxO", "sets": 3, "reps": 5, "time_mode": false, "note": "靠墙倒立推，前束强化"}, {"name": "scapula push-up", "name_cn": "肩胛俯卧撑", "target": "serratus anterior", "media_id": "jV65tKx", "sets": 3, "reps": 15, "time_mode": false, "note": "肩胛俯卧撑，肩袖稳定"}, {"name": "reverse plank with leg lift", "name_cn": "反向 平板 带 腿 举", "target": "abs", "media_id": "tFToB7l", "sets": 3, "reps": 10, "time_mode": false, "note": "反向平板，后束激活"}]}, "male_abs": {"title": "腹肌雕刻套餐", "icon": "🔥", "desc": "卷腹+举腿+平板，雕刻六块腹肌", "exercises": [["crunch floor", 4, 20, false, "肩胛骨离地即可，不要拉头"], ["hanging straight leg raise", 3, 12, false, "控制摆动，下腹发力"], ["front plank with twist", 3, 45, true, "收紧核心，身体成一条线"], ["cross body crunch", 3, 15, false, "对侧肘碰膝，腹斜肌参与"], ["reverse crunch", 3, 15, false, "下腹卷起，骨盆离地"]], "items": [{"name": "crunch floor", "name_cn": "卷腹 地板", "target": "abs", "media_id": "TFqbd8t", "sets": 4, "reps": 20, "time_mode": false, "note": "肩胛骨离地即可，不要拉头"}, {"name": "hanging straight leg raise", "name_cn": "悬垂 直腿举", "target": "abs", "media_id": "4Ml7QFO", "sets": 3, "reps": 12, "time_mode": false, "note": "控制摆动，下腹发力"}, {"name": "front plank with twist", "name_cn": "前 平板 带 转体", "target": "abs", "media_id": "CosupLu", "sets": 3, "reps": 45, "time_mode": true, "note": "收紧核心，身体成一条线"}, {"name": "cross body crunch", "name_cn": "交叉卷腹", "target": "abs", "media_id": "rbu5UUb", "sets": 3, "reps": 15, "time_mode": false, "note": "对侧肘碰膝，腹斜肌参与"}, {"name": "reverse crunch", "name_cn": "反向卷腹", "target": "abs", "media_id": "nCU1Ekp", "sets": 3, "reps": 15, "time_mode": false, "note": "下腹卷起，骨盆离地"}]}, "male_legs": {"title": "腿部增肌套餐", "icon": "🦵", "desc": "深蹲+弓步+提踵，打造强壮下肢", "exercises": [["split squats", 4, 10, false, "分腿蹲，每侧独立发力"], ["single leg squat (pistol) male", 3, 6, false, "单腿深蹲，挑战平衡"], ["lunge with jump", 3, 12, false, "弓步跳跃换腿，爆发力"], ["glute-ham raise", 3, 10, false, "腘绳肌+臀肌协同发力"], ["bodyweight standing calf raise", 4, 15, false, "自重提踵，全幅度拉伸"]], "items": [{"name": "split squats", "name_cn": "分腿蹲", "target": "quads", "media_id": "9E25EOx", "sets": 4, "reps": 10, "time_mode": false, "note": "分腿蹲，每侧独立发力"}, {"name": "single leg squat (pistol) male", "name_cn": "单腿 深蹲 (单腿) 男", "target": "glutes", "media_id": "nqs5HGV", "sets": 3, "reps": 6, "time_mode": false, "note": "单腿深蹲，挑战平衡"}, {"name": "lunge with jump", "name_cn": "弓步 带 跳", "target": "glutes", "media_id": "PM1PZjg", "sets": 3, "reps": 12, "time_mode": false, "note": "弓步跳跃换腿，爆发力"}, {"name": "glute-ham raise", "name_cn": "臀腿提升", "target": "hamstrings", "media_id": "Vvwjz6N", "sets": 3, "reps": 10, "time_mode": false, "note": "腘绳肌+臀肌协同发力"}, {"name": "bodyweight standing calf raise", "name_cn": "自重 站姿小腿 举", "target": "calves", "media_id": "bJYHBIN", "sets": 4, "reps": 15, "time_mode": false, "note": "自重提踵，全幅度拉伸"}]}};
+const bpRec = {"chest": [{"name": "barbell bench press", "name_cn": "杠铃卧推", "target": "pectorals", "media_id": "EIeI8Vf", "sets": 3, "reps": 12, "time_mode": false, "note": ""}, {"name": "dumbbell fly", "name_cn": "哑铃飞鸟", "target": "pectorals", "media_id": "yz9nUhF", "sets": 3, "reps": 12, "time_mode": false, "note": ""}, {"name": "push-up", "name_cn": "俯卧撑", "target": "pectorals", "media_id": "I4hDWkc", "sets": 3, "reps": 12, "time_mode": false, "note": ""}, {"name": "dumbbell pullover", "name_cn": "哑铃颈后拉", "target": "pectorals", "media_id": "9XjtHvS", "sets": 3, "reps": 12, "time_mode": false, "note": ""}], "back": [{"name": "pull-up", "name_cn": "引体向上", "target": "lats", "media_id": "lBDjFxJ", "sets": 3, "reps": 12, "time_mode": false, "note": ""}, {"name": "cable lat pulldown full range of motion", "name_cn": "绳索 背阔 下拉 完整 范围 的 动态", "target": "lats", "media_id": "LEprlgG", "sets": 3, "reps": 12, "time_mode": false, "note": ""}, {"name": "hyperextension", "name_cn": "背部挺身", "target": "spine", "media_id": "zhMwOwE", "sets": 3, "reps": 12, "time_mode": false, "note": ""}], "shoulders": [{"name": "dumbbell lateral raise", "name_cn": "哑铃侧平举", "target": "delts", "media_id": "DsgkuIt", "sets": 3, "reps": 12, "time_mode": false, "note": ""}, {"name": "barbell upright row", "name_cn": "杠铃直立划船", "target": "delts", "media_id": "UDlhcO8", "sets": 3, "reps": 12, "time_mode": false, "note": ""}, {"name": "dumbbell front raise", "name_cn": "哑铃前平举", "target": "delts", "media_id": "3eGE2JC", "sets": 3, "reps": 12, "time_mode": false, "note": ""}], "upper arms": [{"name": "dumbbell biceps curl", "name_cn": "哑铃二头弯举", "target": "biceps", "media_id": "NbVPDMW", "sets": 3, "reps": 12, "time_mode": false, "note": ""}, {"name": "barbell curl", "name_cn": "杠铃弯举", "target": "biceps", "media_id": "25GPyDY", "sets": 3, "reps": 12, "time_mode": false, "note": ""}, {"name": "cable reverse grip triceps pushdown (sz-bar) (with arm blaster)", "name_cn": "绳索反握三头下压（曲杆+臂撑器）", "target": "triceps", "media_id": "ThKP69G", "sets": 3, "reps": 12, "time_mode": false, "note": ""}, {"name": "cable hammer curl (with rope)", "name_cn": "绳索 锤式弯举 (带 绳索)", "target": "biceps", "media_id": "HPlPoQA", "sets": 3, "reps": 12, "time_mode": false, "note": ""}], "upper legs": [{"name": "barbell squat (on knees)", "name_cn": "杠铃跪蹲", "target": "quads", "media_id": "oR7O9LW", "sets": 3, "reps": 12, "time_mode": false, "note": ""}, {"name": "dumbbell lunge", "name_cn": "哑铃 弓步", "target": "glutes", "media_id": "RRWFUcw", "sets": 3, "reps": 12, "time_mode": false, "note": ""}, {"name": "lever leg extension", "name_cn": "杠杆腿伸展", "target": "quads", "media_id": "my33uHU", "sets": 3, "reps": 12, "time_mode": false, "note": ""}, {"name": "cable assisted inverse leg curl", "name_cn": "绳索辅助反向腿弯举", "target": "hamstrings", "media_id": "zHEpuuc", "sets": 3, "reps": 12, "time_mode": false, "note": ""}, {"name": "band single leg calf raise", "name_cn": "弹力带 单腿 小腿 举", "target": "calves", "media_id": "9JprnPh", "sets": 3, "reps": 12, "time_mode": false, "note": ""}], "waist": [{"name": "bodyweight incline side plank", "name_cn": "自重 上斜 侧 平板", "target": "abs", "media_id": "5VXmnV5", "sets": 3, "reps": 12, "time_mode": false, "note": ""}, {"name": "band bicycle crunch", "name_cn": "弹力带 自行车卷腹", "target": "abs", "media_id": "tZkGYZ9", "sets": 3, "reps": 12, "time_mode": false, "note": ""}, {"name": "russian twist", "name_cn": "俄式转体", "target": "abs", "media_id": "XVDdcoj", "sets": 3, "reps": 12, "time_mode": false, "note": ""}, {"name": "assisted lying leg raise with lateral throw down", "name_cn": "辅助仰卧 腿 举 带侧下投", "target": "abs", "media_id": "UGhRD1A", "sets": 3, "reps": 12, "time_mode": false, "note": ""}, {"name": "band bicycle crunch", "name_cn": "弹力带 自行车卷腹", "target": "abs", "media_id": "tZkGYZ9", "sets": 3, "reps": 12, "time_mode": false, "note": ""}], "lower legs": [{"name": "barbell standing calf raise", "name_cn": "杠铃站姿提踵", "target": "calves", "media_id": "8ozhUIZ", "sets": 3, "reps": 12, "time_mode": false, "note": ""}, {"name": "barbell seated calf raise", "name_cn": "杠铃坐姿提踵", "target": "calves", "media_id": "ktsFQAZ", "sets": 3, "reps": 12, "time_mode": false, "note": ""}, {"name": "band single leg calf raise", "name_cn": "弹力带 单腿 小腿 举", "target": "calves", "media_id": "9JprnPh", "sets": 3, "reps": 12, "time_mode": false, "note": ""}, {"name": "calf stretch with hands against wall", "name_cn": "扶墙小腿拉伸", "target": "calves", "media_id": "m0tCHqc", "sets": 3, "reps": 12, "time_mode": false, "note": ""}], "lower arms": [{"name": "band reverse wrist curl", "name_cn": "弹力带 反腕 弯举", "target": "forearms", "media_id": "Ezpnw9d", "sets": 3, "reps": 12, "time_mode": false, "note": ""}, {"name": "barbell reverse curl", "name_cn": "杠铃反向 弯举", "target": "biceps", "media_id": "xNrS20v", "sets": 3, "reps": 12, "time_mode": false, "note": ""}], "cardio": [{"name": "burpee", "name_cn": "波比跳", "target": "cardiovascular system", "media_id": "dK9394r", "sets": 3, "reps": 12, "time_mode": false, "note": ""}, {"name": "mountain climber", "name_cn": "登山者", "target": "cardiovascular system", "media_id": "RJgzwny", "sets": 3, "reps": 12, "time_mode": false, "note": ""}, {"name": "walking high knees lunge", "name_cn": "高抬腿行走弓步", "target": "cardiovascular system", "media_id": "J9zIWig", "sets": 3, "reps": 12, "time_mode": false, "note": ""}, {"name": "skater hops", "name_cn": "滑冰跳", "target": "cardiovascular system", "media_id": "zfNHMN9", "sets": 3, "reps": 12, "time_mode": false, "note": ""}], "neck": []};
+const bpOptions = [
+    {id:'chest', emoji:'💪', cn:'胸部'},
+    {id:'back', emoji:'🔙', cn:'背部'},
+    {id:'shoulders', emoji:'🤷', cn:'肩部'},
+    {id:'upper arms', emoji:'💪', cn:'上臂'},
+    {id:'upper legs', emoji:'🦵', cn:'大腿'},
+    {id:'waist', emoji:'🧘', cn:'腰部'},
+    {id:'lower legs', emoji:'🦶', cn:'小腿'},
+    {id:'lower arms', emoji:'🤜', cn:'前臂'},
+    {id:'cardio', emoji:'🏃', cn:'有氧'},
+    {id:'neck', emoji:'🦒', cn:'颈部'}
+];
+
+let plan = JSON.parse(localStorage.getItem('workoutPlan') || '[]');
+let currentMode = 'goal';
+const tplMap = {};
+(function(){
+    for (const k in goalTemplates) (goalTemplates[k].items || []).forEach(t => { tplMap[t.name] = t; });
+    for (const k in bpRec) (bpRec[k] || []).forEach(t => { tplMap[t.name] = t; });
+})();
+document.addEventListener('click', function(e) {
+    const btn = e.target.closest ? e.target.closest('.add-btn') : null;
+    if (!btn || !btn.dataset.tpl) return;
+    const tpl = tplMap[btn.dataset.tpl];
+    if (tpl) addToPlan(tpl);
+});
+let gender = 'general';
+let selectedBP = null;
+let selectedGoal = null;
+let currentExIdx = 0;
+let currentSetNum = 0;
+let completedSets = {};
+let timerInterval = null;
+let remainingTime = 0;
+
+function findExercise(name) {
+    return allExercises.find(e => e.name === name) || allExercises.find(e => e.name.toLowerCase().includes(name.toLowerCase()));
+}
+
+function handleGifError(img) {
+    if (!img._fallback) {
+        img._fallback = 1;
+        const mid = img.getAttribute('data-media-id');
+        if (mid && navigator.onLine !== false) { img.src = 'https://static.exercisedb.dev/media/' + mid + '.gif'; return; }
+    }
+    img.style.display = 'none';
+    const p = img.nextElementSibling;
+    if (p) p.style.display = 'flex';
+}
+
+function esc(text) {
+    const d = document.createElement('div'); d.textContent = (text || '').replace(/"/g, '&quot;'); return d.innerHTML;
+}
+
+function setMode(mode) {
+    currentMode = mode;
+    document.querySelectorAll('.mode-tab').forEach(t => t.classList.toggle('active', t.textContent.includes(mode === 'goal' ? '目标' : '部位')));
+    document.getElementById('goalSection').style.display = mode === 'goal' ? 'block' : 'none';
+    document.getElementById('bpSection').style.display = mode === 'bodypart' ? 'block' : 'none';
+}
+
+function setGender(g) {
+    gender = g;
+    const labels = {'general':'通用','female':'女生','male':'男生'};
+    document.querySelectorAll('#genderBar .gender-chip').forEach(c => c.classList.toggle('active', c.textContent === labels[g]));
+    selectedGoal = null;
+    document.getElementById('goalRecList').className = 'rec-list';
+    document.querySelectorAll('.goal-card').forEach(c => c.classList.remove('selected'));
+    renderGoalGrid();
+    renderHint();
+}
+
+// ===== Goal mode =====
+function renderGoalGrid() {
+    const grid = document.getElementById('goalGrid');
+    let html = '';
+    let count = 0;
+    for (const key in goalTemplates) {
+        if (gender === 'female' && !key.startsWith('female_')) continue;
+        if (gender === 'male' && !key.startsWith('male_')) continue;
+        count++;
+        const g = goalTemplates[key];
+        html += '<div class="goal-card" onclick="selectGoal(&quot;' + key + '&quot;)" id="goal_' + key + '">';
+        html += '<div class="icon">' + g.icon + '</div>';
+        html += '<div class="title">' + esc(g.title) + '</div>';
+        html += '<div class="desc">' + esc(g.desc) + '</div>';
+        html += '</div>';
+    }
+    if (count === 0) html = '<div style="grid-column:1/-1;text-align:center;color:#999;padding:20px">该模式下暂无推荐</div>';
+    grid.innerHTML = html;
+}
+
+function renderHint() {
+    const titleEl = document.querySelector('#hintBox .title');
+    const contentEl = document.getElementById('hintContent');
+    const hints = {
+        'female': {
+            title: '💡 女生推荐',
+            lines: ['🍑 蜜桃臀：臀桥+深蹲+弓步，提升臀线','🔥 马甲线：卷腹+举腿+平板，收紧腰腹','🦋 美背：自重划船+引体+挺身，改善圆肩','💦 全身燃脂：波比+半蹲跳+登山跑，提升心率']
+        },
+        'male': {
+            title: '💡 男生推荐',
+            lines: ['💪 胸肌强化：俯卧撑变式+臂屈伸，增厚胸肌','🔙 背部力量：引体+自重划船+挺身，倒三角','🤷 肩部增宽：倒立推+俯卧撑变式，宽肩','🔥 腹肌雕刻：卷腹+举腿+平板，六块腹肌','🦵 腿部增肌：深蹲+弓步+提踵，强壮下肢']
+        },
+        'general': {
+            title: '💡 全人群推荐',
+            lines: ['🍑 蜜桃臀：臀桥+深蹲+弓步，提升臀线','💪 胸肌强化：俯卧撑变式+臂屈伸，增厚胸肌','🔥 腹肌雕刻：卷腹+举腿+平板，强化核心','🦵 腿部增肌：深蹲+弓步+提踵，强壮下肢','💦 全身燃脂：波比+半蹲跳+登山跑，提升心率']
+        }
+    };
+    const h = hints[gender];
+    titleEl.textContent = h.title;
+    contentEl.innerHTML = h.lines.map(l => '<p>' + esc(l) + '</p>').join('');
+}
+
+function selectGoal(goalId) {
+    selectedGoal = goalId;
+    document.querySelectorAll('.goal-card').forEach(c => c.classList.remove('selected'));
+    document.getElementById('goal_' + goalId).classList.add('selected');
+    renderGoalRecommendations(goalId);
+}
+
+function renderGoalRecommendations(goalId) {
+    const list = document.getElementById('goalRecList');
+    const items = document.getElementById('goalRecItems');
+    list.className = 'rec-list active';
+    const tpl = goalTemplates[goalId].items;
+    let html = '';
+    for (const t of tpl) {
+        const isAdded = plan.some(p => p.name === t.name);
+        html += renderRecItem(t, isAdded);
+    }
+    items.innerHTML = html;
+}
+
+function renderRecItem(t, isAdded) {
+    const unit = t.time_mode ? '秒' : '次';
+    const mid = t.media_id;
+    let html = '<div class="rec-item">';
+    html += '<div class="gif-thumb">';
+    if (mid) {
+        html += '<img src="gifs/' + mid + '.gif" data-media-id="' + mid + '" onerror="handleGifError(this)" />';
+        html += '<div class="placeholder" style="display:none">🏋️</div>';
+    } else {
+        html += '<div class="placeholder">🏋️</div>';
+    }
+    html += '</div>';
+    html += '<div class="info"><h3>' + esc(t.name_cn) + '</h3>';
+    html += '<div class="target">目标：' + esc(t.target || '综合') + ' · 建议 ' + t.sets + '组×' + t.reps + unit + '</div></div>';
+        if (isAdded) {
+            html += '<div class="add-btn added">已添加</div>';
+        } else {
+            html += '<div class="add-btn" data-tpl="' + esc(t.name) + '">+</div>';
+        }
+    html += '</div>';
+    return html;
+}
+
+// ===== Body part mode =====
+function renderBPGrid() {
+    const grid = document.getElementById('bpGrid');
+    let html = '';
+    for (const bp of bpOptions) {
+        html += '<div class="bp-btn" onclick="selectBP(&quot;' + bp.id + '&quot;)" id="bp_' + bp.id + '">';
+        html += '<span class="emoji">' + bp.emoji + '</span>' + bp.cn + '</div>';
+    }
+    grid.innerHTML = html;
+}
+
+function selectBP(bpId) {
+    selectedBP = bpId;
+    document.querySelectorAll('.bp-btn').forEach(b => b.classList.toggle('selected', b.id === 'bp_' + bpId));
+    const list = document.getElementById('recList');
+    const items = document.getElementById('recItems');
+    list.className = 'rec-list active';
+    let html = '';
+    for (const t of (bpRec[bpId] || [])) {
+        const isAdded = plan.some(p => p.name === t.name);
+        html += renderRecItem(t, isAdded);
+    }
+    items.innerHTML = html;
+}
+
+// ===== Plan =====
+function addToPlan(template) {
+    if (plan.some(p => p.name === template.name)) return;
+    plan.push({
+        id: 'ex_' + Date.now() + '_' + Math.random().toString(36).substr(2,5),
+        name: template.name,
+        name_cn: template.name_cn,
+        target: template.target || '',
+        media_id: template.media_id || '',
+        sets: template.sets || 3,
+        reps: template.reps || 12,
+        unit: template.time_mode ? '秒' : '次',
+        note: template.note || ''
+    });
+    localStorage.setItem('workoutPlan', JSON.stringify(plan));
+    if (currentMode === 'goal' && selectedGoal) renderGoalRecommendations(selectedGoal);
+    else if (selectedBP) renderBPRecommendations(selectedBP);
+    updatePlanVisibility();
+}
+
+function renderBPRecommendations(bpId) {
+    selectBP(bpId);
+}
+
+function updatePlanVisibility() {
+    const hasPlan = plan.length > 0;
+    document.getElementById('goalSection').style.display = hasPlan ? 'none' : (currentMode === 'goal' ? 'block' : 'none');
+    document.getElementById('bpSection').style.display = hasPlan ? 'none' : (currentMode === 'bodypart' ? 'block' : 'none');
+    document.querySelector('.mode-tabs').style.display = hasPlan ? 'none' : 'flex';
+    document.getElementById('genderBar').style.display = hasPlan ? 'none' : 'flex';
+    document.getElementById('planView').style.display = hasPlan ? 'block' : 'none';
+    document.getElementById('headerBtn').style.display = hasPlan ? 'inline-block' : 'none';
+    const startBtn = document.getElementById('startBtn');
+    startBtn.className = hasPlan ? 'start-btn' : 'start-btn disabled';
+    if (hasPlan) renderPlan();
+}
+
+function renderPlan() {
+    const listEl = document.getElementById('planList');
+    let html = '';
+    for (let i = 0; i < plan.length; i++) {
+        const ex = plan[i];
+        html += '<div class="exercise-item">';
+        html += '<div class="gif-thumb">';
+        if (ex.media_id) {
+            html += '<img src="gifs/' + ex.media_id + '.gif" data-media-id="' + ex.media_id + '" onerror="handleGifError(this)" />';
+            html += '<div class="placeholder" style="display:none">🏋️</div>';
+        } else {
+            html += '<div class="placeholder">🏋️</div>';
+        }
+        html += '</div>';
+        html += '<div class="info"><h3>' + esc(ex.name_cn) + '</h3>';
+        html += '<div class="config">';
+        html += '<input type="number" min="1" max="10" value="' + ex.sets + '" onchange="updateSets(' + i + ',this.value)"> <span class="label-sm">组</span>';
+        html += ' × ';
+        html += '<input type="number" min="1" max="100" value="' + ex.reps + '" onchange="updateReps(' + i + ',this.value)"> <span class="label-sm">' + ex.unit + '</span>';
+        html += '</div></div>';
+        html += '<div class="actions"><button class="btn-sm btn-del" onclick="removeEx(' + i + ')">✕</button></div>';
+        html += '</div>';
+    }
+    listEl.innerHTML = html;
+}
+
+function updateSets(idx, val) { plan[idx].sets = parseInt(val) || 3; localStorage.setItem('workoutPlan', JSON.stringify(plan)); }
+function updateReps(idx, val) { plan[idx].reps = parseInt(val) || 10; localStorage.setItem('workoutPlan', JSON.stringify(plan)); }
+function removeEx(idx) { plan.splice(idx, 1); localStorage.setItem('workoutPlan', JSON.stringify(plan)); updatePlanVisibility(); }
+function clearPlan() { if (confirm('确定清空训练计划？')) { plan = []; localStorage.setItem('workoutPlan', JSON.stringify(plan)); updatePlanVisibility(); } }
+
+// ===== Workout mode =====
+function startWorkout() {
+    if (plan.length === 0) return;
+    document.getElementById('goalSection').style.display = 'none';
+    document.getElementById('bpSection').style.display = 'none';
+    document.getElementById('planView').style.display = 'none';
+    document.getElementById('genderBar').style.display = 'none';
+    document.querySelector('.mode-tabs').style.display = 'none';
+    document.getElementById('workoutView').style.display = 'block';
+    document.getElementById('headerBtn').style.display = 'none';
+    document.getElementById('headerTitle').textContent = '💪 训练中';
+    currentExIdx = 0; currentSetNum = 1; completedSets = {};
+    showCurrentExercise();
+}
+
+function showCurrentExercise() {
+    const ex = plan[currentExIdx];
+    const unit = ex.unit || '次';
+    const gifArea = document.getElementById('currentGif');
+    if (ex.media_id) {
+        gifArea.innerHTML = '<img src="gifs/' + ex.media_id + '.gif" data-media-id="' + ex.media_id + '" onerror="handleGifError(this)" style="height:100%;max-width:100%;object-fit:contain"><div class="placeholder" style="display:none">🏋️</div>';
+    } else {
+        gifArea.innerHTML = '<div class="placeholder">🏋️</div>';
+    }
+    document.getElementById('currentName').textContent = ex.name_cn;
+    const completed = completedSets[ex.id] || 0;
+    document.getElementById('currentSetInfo').textContent = '第 ' + currentSetNum + '/' + ex.sets + '组 · ' + ex.reps + unit + '/组 · 已完成 ' + completed + '组';
+    document.getElementById('timerPhase').textContent = '第 ' + currentSetNum + '组 · ' + ex.name_cn;
+    document.getElementById('timerTime').textContent = ex.reps + unit;
+    document.getElementById('timerProgress').style.width = (completed / ex.sets * 100) + '%';
+    document.getElementById('stepsArea').innerHTML = '<h3>💡 提示</h3><p style="font-size:0.85em;color:#555">' + esc(ex.note || '完成 ' + ex.reps + unit + '，保持匀速，注意呼吸。呼气发力，吸气还原。') + '</p>';
+}
+
+function completeSet() { advanceSet(true); }
+function skipSet() { advanceSet(false); }
+function advanceSet(count) {
+    const ex = plan[currentExIdx];
+    let completed = completedSets[ex.id] || 0;
+    completed++; completedSets[ex.id] = completed;
+    if (completed >= ex.sets) {
+        if (currentExIdx < plan.length - 1) {
+            currentExIdx++; currentSetNum = 1; showRestBeforeNext();
+        } else {
+            finishWorkout();
+        }
+    } else {
+        currentSetNum = completed + 1; showRest();
+    }
+}
+
+function showRest() { remainingTime = restDuration; showRestOverlay('组间休息'); }
+function showRestBeforeNext() { remainingTime = restBetweenExercises; showRestOverlay('换动作休息', '下一个：' + plan[currentExIdx].name_cn); }
+function showRestOverlay(phase, hint) {
+    clearInterval(timerInterval);
+    const overlay = document.getElementById('restOverlay');
+    overlay.style.display = 'block';
+    overlay.querySelector('.phase').textContent = '⏸ ' + phase;
+    if (hint) overlay.querySelector('.hint').textContent = hint;
+    updateRestDisplay();
+    timerInterval = setInterval(() => {
+        remainingTime--; updateRestDisplay();
+        if (remainingTime <= 0) {
+            clearInterval(timerInterval);
+            overlay.style.display = 'none';
+            overlay.querySelector('.phase').textContent = '⏸ 休息';
+            overlay.querySelector('.hint').textContent = '调整呼吸，准备下一组';
+            showCurrentExercise();
+        }
+    }, 1000);
+}
+function updateRestDisplay() {
+    const m = Math.floor(remainingTime / 60);
+    const s = remainingTime % 60;
+    document.getElementById('restTime').textContent = m > 0 ? m + ':' + (s < 10 ? '0' : '') + s : remainingTime;
+}
+function skipRest() { clearInterval(timerInterval); document.getElementById('restOverlay').style.display = 'none'; showCurrentExercise(); }
+
+function finishWorkout() {
+    clearInterval(timerInterval);
+    document.getElementById('workoutView').style.display = 'none';
+    document.getElementById('completeView').style.display = 'block';
+    document.getElementById('headerTitle').textContent = '🎉 完成';
+    let total = 0, done = 0, names = [];
+    for (const ex of plan) {
+        total += ex.sets;
+        done += completedSets[ex.id] || 0;
+        names.push(ex.name_cn);
+    }
+    document.getElementById('completeSummary').innerHTML = '共 ' + plan.length + ' 个动作<br>完成 ' + done + '/' + total + ' 组<br>涉及：' + names.join('、');
+}
+
+function saveHistory() {
+    const history = JSON.parse(localStorage.getItem('workoutHistory') || '[]');
+    let total = 0, done = 0, list = [];
+    for (const ex of plan) {
+        total += ex.sets; done += completedSets[ex.id] || 0;
+        list.push({name: ex.name_cn, sets_done: completedSets[ex.id] || 0, sets_target: ex.sets, reps: ex.reps, unit: ex.unit});
+    }
+    history.push({date: new Date().toISOString(), exercises: list, total_sets: total, completed_sets: done, body_part: selectedBP || selectedGoal});
+    localStorage.setItem('workoutHistory', JSON.stringify(history));
+    plan = []; localStorage.setItem('workoutPlan', JSON.stringify(plan));
+    showToast('记录已保存！');
+    setTimeout(() => { location.href = 'history.html'; }, 1200);
+}
+
+function showToast(msg) {
+    const toast = document.createElement('div'); toast.className = 'toast'; toast.textContent = msg;
+    document.body.appendChild(toast);
+    setTimeout(() => toast.style.opacity = '1', 10);
+    setTimeout(() => { toast.style.opacity = '0'; setTimeout(() => toast.remove(), 300); }, 1500);
+}
+
+if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js');
+
+renderGoalGrid();
+renderBPGrid();
+renderHint();
+if (plan.length > 0) updatePlanVisibility();
+</script>
+</body>
+</html>

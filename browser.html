@@ -1,0 +1,318 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="theme-color" content="#009688">
+<link rel="manifest" href="manifest.json">
+<title>轻练 · 百科</title>
+<link rel="stylesheet" href="styles.css">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; img-src 'self' data: https://static.exercisedb.dev; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; manifest-src 'self';">
+</head>
+<body>
+<div class="header">
+    <h1>轻练</h1>
+    <div class="subtitle">运动百科 · 1324 个动作</div>
+</div>
+
+<div class="quick-tabs" id="quickTabs">
+    <div class="quick-tab active" data-filter="all">全部</div>
+    <div class="quick-tab" data-filter="body weight">居家</div>
+    <div class="quick-tab" data-filter="upper arms">上臂</div>
+    <div class="quick-tab" data-filter="upper legs">腿部</div>
+    <div class="quick-tab" data-filter="waist">核心</div>
+    <div class="quick-tab" data-filter="cardio">有氧</div>
+</div>
+
+<div class="gender-bar">
+    <span>推荐模式：</span>
+    <div class="gender-chip active" data-gender="all">通用</div>
+    <div class="gender-chip" data-gender="female">女生</div>
+    <div class="gender-chip" data-gender="male">男生</div>
+</div>
+
+<div class="filter-bar">
+    <select id="bpFilter"><option value="">全部部位</option><option value="有氧">有氧</option><option value="胸部">胸部</option><option value="背部">背部</option><option value="腰部">腰部</option><option value="肩部">肩部</option><option value="颈部">颈部</option><option value="上臂">上臂</option><option value="前臂">前臂</option><option value="大腿">大腿</option><option value="小腿">小腿</option></select>
+    <select id="eqFilter"><option value="">全部器材</option><option value="自重">自重</option><option value="弹力带">弹力带</option><option value="阻力带">阻力带</option><option value="哑铃">哑铃</option><option value="壶铃">壶铃</option><option value="药球">药球</option><option value="健腹轮">健腹轮</option><option value="滚轮">滚轮</option><option value="稳定球">稳定球</option><option value="波速球">波速球</option><option value="绳索">绳索</option><option value="W曲杆杠铃">W曲杆杠铃</option><option value="杠铃">杠铃</option><option value="奥运杠铃">奥运杠铃</option><option value="六角杠铃">六角杠铃</option><option value="拉力器">拉力器</option><option value="辅助器械">辅助器械</option><option value="负重">负重</option><option value="锤式">锤式</option><option value="史密斯机">史密斯机</option><option value="杠杆机">杠杆机</option><option value="推雪橇机">推雪橇机</option><option value="上肢测功仪">上肢测功仪</option><option value="滑雪机">滑雪机</option><option value="固定自行车">固定自行车</option><option value="椭圆机">椭圆机</option><option value="阶梯机">阶梯机</option><option value="轮胎">轮胎</option></select>
+    <select id="targetFilter"><option value="">目标肌群</option><option value="心肺系统">心肺系统</option><option value="腹肌">腹肌</option><option value="胸肌">胸肌</option><option value="臀肌">臀肌</option><option value="肱二头肌">肱二头肌</option><option value="三角肌">三角肌</option><option value="肱三头肌">肱三头肌</option><option value="背阔肌">背阔肌</option><option value="上背部">上背部</option><option value="股四头肌">股四头肌</option><option value="腘绳肌">腘绳肌</option><option value="小腿">小腿</option><option value="前臂">前臂</option><option value="斜方肌">斜方肌</option><option value="脊柱">脊柱</option><option value="内收肌">内收肌</option><option value="外展肌">外展肌</option><option value="前锯肌">前锯肌</option><option value="肩胛提肌">肩胛提肌</option></select>
+</div>
+
+<div class="search-box">
+    <input type="text" id="search" placeholder="搜索动作名称（中文/英文）" autocomplete="off">
+</div>
+
+<div class="list" id="list"><div class="no-result" id="loadingState"><div class="icon">⏳</div><div>加载动作数据中...</div></div></div>
+
+<div id="sentinel"></div>
+<div class="overlay" id="overlay" onclick="closeSheet()"></div>
+<div class="bottom-sheet" id="sheet">
+    <div class="sheet-header">
+        <h2 id="sheetTitle">动作详情</h2>
+        <button class="close" onclick="closeSheet()">×</button>
+    </div>
+    <div class="sheet-content" id="sheetContent"></div>
+</div>
+
+<nav class="bottom-nav">
+    <a href="browser.html" class="active"><span>🏋️</span><span>百科</span></a>
+    <a href="workout.html"><span>💪</span><span>训练</span></a>
+    <a href="history.html"><span>📊</span><span>历史</span></a>
+</nav>
+
+<script>
+let exercises = [];
+
+async function loadExercises() {
+    try {
+        const res = await fetch('exercises.json');
+        if (!res.ok) throw new Error('HTTP ' + res.status);
+        exercises = await res.json();
+    } catch(e) {
+        // Fallback for file:// protocol: fetch is blocked by CORS, but <script> tag works
+        console.warn('fetch failed, trying script fallback:', e.message);
+        try {
+            await new Promise((resolve, reject) => {
+                const script = document.createElement('script');
+                script.src = 'exercises-data.js';
+                script.onload = () => {
+                    if (window.__EXERCISES_DATA__) { exercises = window.__EXERCISES_DATA__; resolve(); }
+                    else reject(new Error('Fallback data not found'));
+                };
+                script.onerror = () => reject(new Error('Script load failed'));
+                document.head.appendChild(script);
+            });
+        } catch(err) {
+            console.error('All loading methods failed:', err);
+            document.getElementById('list').innerHTML = '<div class="no-result"><div class="icon">⚠️</div><div>动作数据加载失败，请检查网络后刷新</div></div>';
+            return false;
+        }
+    }
+    return true;
+}
+
+const bpFilter = document.getElementById('bpFilter');
+const eqFilter = document.getElementById('eqFilter');
+const targetFilter = document.getElementById('targetFilter');
+const search = document.getElementById('search');
+const list = document.getElementById('list');
+const quickTabs = document.querySelectorAll('.quick-tab');
+const genderChips = document.querySelectorAll('.gender-chip');
+let currentGender = 'all';
+let currentQuickFilter = 'all';
+const PAGE_SIZE = 40;
+let currentFiltered = [];
+let renderedCount = 0;
+const sentinel = document.getElementById('sentinel');
+let listObserver = null;
+
+function getGifUrl(ex) {
+    return 'gifs/' + ex.media_id + '.gif';
+}
+function handleGifError(img) {
+    if (!img._cdn) {
+        img._cdn = 1;
+        if (navigator.onLine !== false) { img.src = 'https://static.exercisedb.dev/media/' + img.dataset.media + '.gif'; return; }
+    }
+    if (!img._placeholder) { img._placeholder = 1; img.src = 'data:image/svg+xml,<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"80\" height=\"80\"><text x=\"50%\" y=\"50%\" text-anchor=\"middle\" dy=\".3em\" font-size=\"30\">🏋️</text></svg>'; }
+}
+
+function getBodyPartTag(ex) {
+    return ex.body_part_cn || ex.body_part;
+}
+function getEquipmentTag(ex) {
+    return ex.equipment_cn || ex.equipment;
+}
+
+function render() {
+    const bp = bpFilter.value;
+    const eq = eqFilter.value;
+    const target = targetFilter.value;
+    const q = search.value.toLowerCase().trim();
+    
+    let filtered = exercises.filter(ex => {
+        if (bp && (ex.body_part_cn || ex.body_part) !== bp) return false;
+        if (eq && (ex.equipment_cn || ex.equipment) !== eq) return false;
+        if (target && (ex.target_cn || ex.target) !== target) return false;
+        if (currentQuickFilter === 'body weight') {
+            if (ex.equipment !== 'body weight') return false;
+        } else if (currentQuickFilter !== 'all') {
+            if (ex.body_part !== currentQuickFilter) return false;
+        }
+        if (currentGender === 'female') {
+            // Prioritize female-friendly equipment and targets for women
+            const femaleTargets = ['glutes','abs','hamstrings','quads','upper back','lats','cardiovascular system','abductors','adductors'];
+            const femaleEquip = ['body weight','dumbbell','band','resistance band','stability ball','medicine ball','kettlebell'];
+            // For female mode, don't exclude but keep female-preferred; we just hide overly male-centric items
+            if (ex.name.indexOf('(male)') !== -1) return false;
+        } else if (currentGender === 'male') {
+            if (ex.name.indexOf('(female)') !== -1) return false;
+        }
+        if (q) {
+            return (ex.name_cn || '').toLowerCase().includes(q) || (ex.name || '').toLowerCase().includes(q) || (ex.target_cn || '').includes(q);
+        }
+        return true;
+    });
+    
+    // For female mode, sort by female preference first
+    if (currentGender === 'female') {
+        const femaleTargets = {'glutes':1,'abs':2,'cardiovascular system':3,'hamstrings':4,'quads':5,'upper back':6,'lats':7,'abductors':8,'adductors':9};
+        filtered.sort((a,b) => {
+            const pa = femaleTargets[a.target] || 100, pb = femaleTargets[b.target] || 100;
+            return pa - pb || (a.body_part || '').localeCompare(b.body_part || '');
+        });
+    } else if (currentGender === 'male') {
+        const maleTargets = {'pectorals':1,'biceps':2,'triceps':3,'delts':4,'lats':5,'upper back':6,'quads':7,'hamstrings':8,'abs':9};
+        filtered.sort((a,b) => {
+            const pa = maleTargets[a.target] || 100, pb = maleTargets[b.target] || 100;
+            return pa - pb || (a.body_part || '').localeCompare(b.body_part || '');
+        });
+    }
+    
+    const hasFilter = bp || eq || target;
+    if (hasFilter) {
+        search.placeholder = '搜索动作名称（中文/英文）[当前已筛选' + filtered.length + '个动作]';
+    } else {
+        search.placeholder = '搜索动作名称（中文/英文）';
+    }
+    
+    currentFiltered = filtered;
+    renderedCount = 0;
+    if (filtered.length === 0) {
+        if (listObserver) listObserver.disconnect();
+        list.innerHTML = '<div class="no-result"><div class="icon">🔍</div><div>没有找到匹配的动作</div></div>';
+        return;
+    }
+    const firstBatch = filtered.slice(0, PAGE_SIZE);
+    renderedCount = firstBatch.length;
+    list.innerHTML = firstBatch.map(cardHtml).join('');
+    observeSentinel();
+}
+
+function cardHtml(ex) {
+    return '<div class="card" onclick="openDetail(' + ex.id + ')">' +
+        '<img class="gif" data-media="' + ex.media_id + '" src="' + getGifUrl(ex) + '" onerror="handleGifError(this)" loading="lazy">' +
+        '<div class="info"><div class="title">' + escapeHtml(ex.name_cn) + '<span class="en">' + escapeHtml(ex.name) + '</span></div>' +
+        '<div class="tags"><span class="tag">' + escapeHtml(getBodyPartTag(ex)) + '</span><span class="tag">' + escapeHtml(getEquipmentTag(ex)) + '</span></div>' +
+        '</div></div>';
+}
+
+function renderMore() {
+    if (renderedCount >= currentFiltered.length) return;
+    const batch = currentFiltered.slice(renderedCount, renderedCount + PAGE_SIZE);
+    renderedCount += batch.length;
+    list.insertAdjacentHTML('beforeend', batch.map(cardHtml).join(''));
+}
+
+function observeSentinel() {
+    if (!('IntersectionObserver' in window)) { renderMore(); return; }
+    if (listObserver) listObserver.disconnect();
+    listObserver = new IntersectionObserver(function(entries) {
+        if (entries[0].isIntersecting) {
+            renderMore();
+            if (renderedCount >= currentFiltered.length && listObserver) listObserver.disconnect();
+        }
+    }, { rootMargin: '300px' });
+    listObserver.observe(sentinel);
+}
+
+function escapeHtml(s) {
+    return (s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+function openDetail(id) {
+    const ex = exercises.find(e => e.id === id);
+    if (!ex) return;
+    document.getElementById('sheetTitle').textContent = ex.name_cn;
+    const meta = '<div class="sheet-meta">' +
+        '<div class="meta-item"><div class="meta-label">部位</div><div class="meta-value">' + escapeHtml(getBodyPartTag(ex)) + '</div></div>' +
+        '<div class="meta-item"><div class="meta-label">器材</div><div class="meta-value">' + escapeHtml(getEquipmentTag(ex)) + '</div></div>' +
+        '<div class="meta-item"><div class="meta-label">目标肌群</div><div class="meta-value">' + escapeHtml(ex.target_cn || ex.target) + '</div></div>' +
+        '<div class="meta-item"><div class="meta-label">次要肌群</div><div class="meta-value">' + escapeHtml((ex.secondary_muscles_cn || []).join('、') || '无') + '</div></div>' +
+        '</div>';
+    let steps = '';
+    if (ex.zh_steps && ex.zh_steps.length) {
+        steps = '<div class="sheet-section"><h3>动作步骤</h3><ol>' + ex.zh_steps.map(s => '<li>' + escapeHtml(s) + '</li>').join('') + '</ol></div>';
+    }
+    let en = '';
+    if (ex.en_steps && ex.en_steps.length) {
+        en = '<div class="sheet-section"><h3>English Instructions</h3><ol>' + ex.en_steps.map(s => '<li>' + escapeHtml(s) + '</li>').join('') + '</ol></div>';
+    }
+    const btn = '<div class="workout-btn" onclick="addToWorkout(' + ex.id + ')">+ 加入今日训练</div>';
+    document.getElementById('sheetContent').innerHTML = '<img class="sheet-gif" data-media="' + ex.media_id + '" src="' + getGifUrl(ex) + '" onerror="handleGifError(this)">' + meta + steps + en + btn;
+    document.getElementById('overlay').classList.add('active');
+    document.getElementById('sheet').classList.add('active');
+}
+
+function closeSheet() {
+    document.getElementById('overlay').classList.remove('active');
+    document.getElementById('sheet').classList.remove('active');
+}
+
+function addToWorkout(id) {
+    const ex = exercises.find(e => e.id === id);
+    let plan = JSON.parse(localStorage.getItem('workoutPlan') || '[]');
+    if (!plan.some(p => p.name === ex.name)) {
+        plan.push({
+            id: 'ex_' + Date.now() + '_' + Math.random().toString(36).substr(2,5),
+            name: ex.name,
+            name_cn: ex.name_cn,
+            target: ex.target_cn || ex.target || '',
+            media_id: ex.media_id || '',
+            sets: 3,
+            reps: 12,
+            unit: '次',
+            note: '建议 3 组 x 12 次'
+        });
+        localStorage.setItem('workoutPlan', JSON.stringify(plan));
+    }
+    showToast('已加入今日训练！共 ' + plan.length + ' 个动作');
+}
+
+function showToast(msg) {
+    const t = document.createElement('div');
+    t.style.cssText = 'position:fixed;top:20%;left:50%;transform:translateX(-50%);background:rgba(0,0,0,0.7);color:white;padding:10px 20px;border-radius:20px;font-size:0.9em;z-index:300';
+    t.textContent = msg;
+    document.body.appendChild(t);
+    setTimeout(() => t.remove(), 2000);
+}
+
+function debounce(fn, ms) {
+    let t;
+    return function() {
+        clearTimeout(t);
+        const args = arguments, ctx = this;
+        t = setTimeout(() => fn.apply(ctx, args), ms);
+    };
+}
+
+quickTabs.forEach(tab => {
+    tab.addEventListener('click', () => {
+        quickTabs.forEach(t => t.classList.remove('active'));
+        tab.classList.add('active');
+        currentQuickFilter = tab.dataset.filter;
+        render();
+    });
+});
+
+genderChips.forEach(chip => {
+    chip.addEventListener('click', () => {
+        genderChips.forEach(c => c.classList.remove('active'));
+        chip.classList.add('active');
+        currentGender = chip.dataset.gender;
+        render();
+    });
+});
+
+[bpFilter, eqFilter, targetFilter].forEach(el => el.addEventListener('change', render));
+search.addEventListener('input', debounce(render, 200));
+
+// Initialize: load data first, then render
+(async function() {
+    const ok = await loadExercises();
+    if (ok) render();
+})();
+</script>
+</body>
+</html>
