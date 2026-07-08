@@ -86,7 +86,7 @@
         <div class="set-info" id="currentSetInfo">--</div>
     </div>
     <div class="set-buttons">
-        <button class="set-btn btn-complete" onclick="completeSet()">完成</button>
+        <button class="set-btn btn-complete" id="btnComplete" onclick="completeSet()">完成</button>
         <button class="set-btn btn-skip" onclick="skipSet()">跳过</button>
     </div>
     <div class="steps-view" id="stepsArea"></div>
@@ -156,6 +156,10 @@ let currentSetNum = 0;
 let completedSets = {};
 let timerInterval = null;
 let remainingTime = 0;
+// 练习倒计时（计时类动作专用）
+let exerciseTimerInterval = null;
+let exerciseRemainingTime = 0;
+let isExercisePaused = false;
 
 function findExercise(name) {
     return allExercises.find(e => e.name === name) || allExercises.find(e => e.name.toLowerCase().includes(name.toLowerCase()));
@@ -370,7 +374,14 @@ function renderPlan() {
 function updateSets(idx, val) { plan[idx].sets = parseInt(val) || 3; localStorage.setItem('workoutPlan', JSON.stringify(plan)); }
 function updateReps(idx, val) { plan[idx].reps = parseInt(val) || 10; localStorage.setItem('workoutPlan', JSON.stringify(plan)); }
 function removeEx(idx) { plan.splice(idx, 1); localStorage.setItem('workoutPlan', JSON.stringify(plan)); updatePlanVisibility(); }
-function clearPlan() { if (confirm('确定清空训练计划？')) { plan = []; localStorage.setItem('workoutPlan', JSON.stringify(plan)); updatePlanVisibility(); } }
+function clearPlan() {
+    if (plan.length === 0) return;
+    plan = [];
+    localStorage.setItem('workoutPlan', JSON.stringify(plan));
+    document.getElementById('planList').innerHTML = '';
+    updatePlanVisibility();
+    showToast('训练计划已清空');
+}
 
 // ===== Workout mode =====
 function startWorkout() {
@@ -403,11 +414,98 @@ function showCurrentExercise() {
     document.getElementById('timerTime').textContent = ex.reps + unit;
     document.getElementById('timerProgress').style.width = (completed / ex.sets * 100) + '%';
     document.getElementById('stepsArea').innerHTML = '<h3>💡 提示</h3><p style="font-size:0.85em;color:#555">' + esc(ex.note || '完成 ' + ex.reps + unit + '，保持匀速，注意呼吸。呼气发力，吸气还原。') + '</p>';
+    // 计时类动作：自动开始倒计时
+    if (ex.unit === '秒') {
+        startExerciseCountdown(ex.reps);
+    } else {
+        resetExerciseTimerUI();
+    }
 }
 
-function completeSet() { advanceSet(true); }
+// ===== 练习倒计时（计时类动作） =====
+function startExerciseCountdown(seconds) {
+    clearInterval(exerciseTimerInterval);
+    exerciseRemainingTime = seconds;
+    isExercisePaused = false;
+    updateExerciseTimerUI('running');
+    exerciseTimerInterval = setInterval(function() {
+        if (isExercisePaused) return;
+        exerciseRemainingTime--;
+        updateExerciseTimerDisplay();
+        if (exerciseRemainingTime <= 0) {
+            clearInterval(exerciseTimerInterval);
+            exerciseTimerInterval = null;
+            // 倒计时结束，自动完成
+            completeSet();
+        }
+    }, 1000);
+}
+
+function updateExerciseTimerDisplay() {
+    document.getElementById('timerTime').textContent = exerciseRemainingTime + '秒';
+    const ex = plan[currentExIdx];
+    if (ex && ex.reps > 0) {
+        const progress = Math.max(0, ((ex.reps - exerciseRemainingTime) / ex.reps) * 100);
+        document.getElementById('timerProgress').style.width = progress + '%';
+    }
+}
+
+function updateExerciseTimerUI(state) {
+    const btn = document.getElementById('btnComplete');
+    // 先清除所有可能的状态类，避免类叠加导致颜色错乱
+    btn.classList.remove('btn-complete', 'btn-pause', 'btn-resume');
+    if (state === 'running') {
+        btn.textContent = '暂停';
+        btn.classList.add('btn-pause');
+    } else if (state === 'paused') {
+        btn.textContent = '继续';
+        btn.classList.add('btn-resume');
+    } else {
+        // reset / done
+        btn.textContent = '完成';
+        btn.classList.add('btn-complete');
+    }
+    updateExerciseTimerDisplay();
+}
+
+function resetExerciseTimerUI() {
+    clearInterval(exerciseTimerInterval);
+    exerciseTimerInterval = null;
+    isExercisePaused = false;
+    updateExerciseTimerUI('reset');
+}
+
+function togglePause() {
+    if (!exerciseTimerInterval) return;
+    isExercisePaused = !isExercisePaused;
+    if (isExercisePaused) {
+        updateExerciseTimerUI('paused');
+    } else {
+        updateExerciseTimerUI('running');
+    }
+}
+
+function completeSet() {
+    // 计时类动作：倒计时运行中 → 暂停/恢复；已停止或非计时 → 正常完成
+    const ex = plan[currentExIdx];
+    if (ex && ex.unit === '秒' && exerciseTimerInterval && !isExercisePaused) {
+        togglePause();
+        return;
+    }
+    if (ex && ex.unit === '秒' && isExercisePaused) {
+        togglePause();
+        return;
+    }
+    // 正常完成流程
+    clearInterval(exerciseTimerInterval);
+    exerciseTimerInterval = null;
+    advanceSet(true);
+}
 function skipSet() { advanceSet(false); }
 function advanceSet(count) {
+    clearInterval(exerciseTimerInterval);
+    exerciseTimerInterval = null;
+    isExercisePaused = false;
     const ex = plan[currentExIdx];
     let completed = completedSets[ex.id] || 0;
     completed++; completedSets[ex.id] = completed;

@@ -432,6 +432,10 @@ a { color: inherit; }
 }
 .btn-complete { background: var(--brand-500); color: #fff; }
 .btn-complete:active { background: var(--brand-600); transform: scale(.98); }
+.btn-pause { background: var(--warning); color: #fff; }
+.btn-pause:active { background: #e6a000; transform: scale(.98); }
+.btn-resume { background: var(--brand-500); color: #fff; }
+.btn-resume:active { background: var(--brand-600); transform: scale(.98); }
 .btn-skip { background: var(--surface-2); color: var(--text-700); }
 .btn-skip:active { background: var(--border); transform: scale(.98); }
 
